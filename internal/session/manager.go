@@ -1,10 +1,12 @@
 package session
 
 import (
+	"crypto/md5"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"github/hxia043/session/internal/driver"
+	"io"
 	"net/http"
 	"net/url"
 	"sync"
@@ -58,6 +60,17 @@ func (manager *Manager) SessionDestroy(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, cookie)
 }
 
+func (manager *Manager) SessionRead(w http.ResponseWriter, r *http.Request) (driver.Session, error) {
+	manager.lock.Lock()
+	defer manager.lock.Unlock()
+
+	cookie, _ := r.Cookie(manager.cookieName)
+	sid, _ := url.QueryUnescape(cookie.Value)
+	session, _ := manager.driver.SessionRead(sid)
+
+	return session, nil
+}
+
 func (manager *Manager) SessionStart(w http.ResponseWriter, r *http.Request) (session driver.Session) {
 	manager.lock.Lock()
 	defer manager.lock.Unlock()
@@ -74,6 +87,13 @@ func (manager *Manager) SessionStart(w http.ResponseWriter, r *http.Request) (se
 	}
 
 	return
+}
+
+func (manager *Manager) CreateToken() string {
+	hashMd5 := md5.New()
+	salt := "hxia043&*%520"
+	io.WriteString(hashMd5, salt+time.Now().String())
+	return fmt.Sprintf("%x", hashMd5.Sum(nil))
 }
 
 func NewManager(dirverName, cookieName string, maxLifeTime int64) (*Manager, error) {
