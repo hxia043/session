@@ -16,7 +16,6 @@ var (
 func logout(w http.ResponseWriter, r *http.Request) {
 	if verify(w, r) {
 		globalSessionManager.SessionDestroy(w, r)
-		w.Write([]byte(w.Header().Values("Set-Cookie")[0]))
 	} else {
 		w.Write([]byte("verify token failed, please register again"))
 	}
@@ -52,6 +51,12 @@ func login(w http.ResponseWriter, r *http.Request) {
 	session := globalSessionManager.SessionStart(w, r)
 	r.ParseForm()
 	if r.Method == "GET" {
+		if !verify(w, r) {
+			token := globalSessionManager.CreateToken()
+			session.Set("token", token)
+			w.Write([]byte("\n" + token + "\n"))
+		}
+
 		template, _ := template.ParseFiles("../html/login.go.tpl")
 		w.Header().Set("Content-Type", "text/html")
 
@@ -60,14 +65,9 @@ func login(w http.ResponseWriter, r *http.Request) {
 		} else {
 			template.Execute(w, session.Get("username"))
 		}
-
-		token := globalSessionManager.CreateToken()
-		session.Set("token", token)
-		template.Execute(w, token)
 	} else {
 		if verify(w, r) {
 			session.Set("username", r.Form["username"])
-			w.Write([]byte(w.Header().Values("Set-Cookie")[0]))
 		} else {
 			w.Write([]byte("verify token failed, please register again"))
 		}
@@ -85,7 +85,7 @@ func main() {
 }
 
 func init() {
-	globalSessionManager, err = session.NewManager("memory", "sessionid", 30)
+	globalSessionManager, err = session.NewManager("memory", "sessionid", 3600)
 	if err != nil {
 		panic(err.Error())
 	}

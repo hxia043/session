@@ -81,6 +81,7 @@ func (manager *Manager) SessionStart(w http.ResponseWriter, r *http.Request) (se
 		session, _ = manager.driver.SessionInit(sid)
 		cookie := &http.Cookie{Name: manager.cookieName, Value: url.QueryEscape(sid), Path: "/", HttpOnly: true, MaxAge: int(manager.maxLifeTime)}
 		http.SetCookie(w, cookie)
+		w.Write([]byte(w.Header().Values("Set-Cookie")[0]))
 	} else {
 		sid, _ := url.QueryUnescape(cookie.Value)
 		session, _ = manager.driver.SessionRead(sid)
